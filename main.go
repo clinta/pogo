@@ -14,10 +14,13 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+        "github.com/kardianos/service"
 )
 
+type program struct{}
+
 //Runtime
-func init() {
+func (p *program) Start(s service.Service) error {
 	exePath, err := osext.ExecutableFolder()
 	if err != nil {
 		exePath = ".\\"
@@ -31,9 +34,11 @@ func init() {
 	config.SetDefault("ScriptFolder", ".\\scripts\\")
 	config.SetDefault("CommandsEnabled", true)
 	config.SetDefault("ExitEnabled", true)
+        go p.run()
+        return nil
 }
 
-func main() {
+func (p *program) run() {
 	log.Info("Listening at http://" + config.GetString("Binding"))
 
 	mx := mux.NewRouter()
@@ -54,6 +59,32 @@ func main() {
 	}
 
 	http.ListenAndServe(config.GetString("Binding"), mx)
+}
+
+func (p *program) Stop(s service.Service) error {
+        return nil
+}
+
+func main() {
+        svcConfig := &service.Config{
+                Name:        "pogo",
+                DisplayName: "PoGo Service",
+                Description: "PoGo API Service.",
+        }
+
+        prg := &program{}
+        s, err := service.New(prg, svcConfig)
+        if err != nil {
+                log.Fatal(err)
+        }
+        logger, err = s.Logger(nil)
+        if err != nil {
+                log.Fatal(err)
+        }
+        err = s.Run()
+        if err != nil {
+                logger.Error(err)
+        }
 }
 
 //Functions
